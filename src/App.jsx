@@ -3,17 +3,20 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-d
 import { useSelector } from 'react-redux';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import DashboardPage from './pages/DashboardPage';
 import AdminManagementPage from './pages/AdminManagementPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminProfilePage from './pages/AdminProfilePage';
 import ManagerProfilePage from './pages/ManagerProfilePage';
 import ShipperProfilePage from './pages/ShipperProfilePage';
+import ProductManagementPage from './pages/ProductManagementPage';
+import SystemSettingsPage from './pages/SystemSettingsPage';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
 const STAFF_HOME_BY_ROLE = {
-  R1: '/admin/orders',
-  R3: '/manager/users',
+  R1: '/admin/dashboard',
+  R3: '/manager/dashboard',
   R4: '/shipper/delivery',
 };
 
@@ -69,6 +72,22 @@ function App() {
         <Route path="/" element={<StaffHomeRedirect />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['R1']}>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['R3']}>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/admin/profile"
@@ -93,8 +112,32 @@ function App() {
         <Route
           path="/admin/orders"
           element={
-            <ProtectedRoute allowedRoles={['R1']}>
+            <ProtectedRoute allowedRoles={['R1', 'R3']}>
               <AdminOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/orders"
+          element={<Navigate to="/admin/orders" replace />}
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute allowedRoles={['R1', 'R3']}>
+              <ProductManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/products"
+          element={<Navigate to="/admin/products" replace />}
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute allowedRoles={['R1', 'R3']}>
+              <SystemSettingsPage />
             </ProtectedRoute>
           }
         />
