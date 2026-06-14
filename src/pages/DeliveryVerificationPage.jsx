@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { ScanOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import DeliveryQrScanner from '../components/order/DeliveryQrScanner';
+import { logoutUser } from '../redux/slices/authSlice';
 import { verifyDeliveryQrApi } from '../util/api';
 
 const RESULT_STYLES = {
@@ -50,6 +52,8 @@ const getRejectedResult = (error) => ({
 });
 
 const DeliveryVerificationPage = () => {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
     const [verifying, setVerifying] = useState(false);
     const [result, setResult] = useState(null);
 
@@ -79,6 +83,11 @@ const DeliveryVerificationPage = () => {
         setResult(null);
     };
 
+    const handleLogout = async () => {
+        await dispatch(logoutUser());
+        navigate('/login', { replace: true });
+    };
+
     const order = result?.order;
     const baseTone = RESULT_STYLES[result?.verificationLevel] || RESULT_STYLES.REJECTED;
     const tone = order?.status === 'DELIVERED'
@@ -92,20 +101,23 @@ const DeliveryVerificationPage = () => {
         <div className="min-h-screen bg-[radial-gradient(circle_at_top,#fff7ed_0%,#f8fafc_45%,#eef2ff_100%)] text-slate-900">
             <header className="border-b border-orange-100 bg-white/90 backdrop-blur">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
-                    <Link to="/" className="flex items-center gap-3 text-left">
+                    <Link to="/shipper/delivery" className="flex items-center gap-3 text-left">
                         <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 text-xl font-black text-white">S</span>
                         <div>
                             <div className="font-black">SmartZone Store</div>
                             <div className="text-xs font-bold uppercase tracking-[0.18em] text-orange-600">Delivery Verify</div>
                         </div>
                     </Link>
-                    <div className="flex gap-2">
-                        <Link to="/orders" className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:border-orange-400">
-                            Đơn hàng
+                    <div className="flex flex-wrap gap-2">
+                        <Link to="/shipper/profile" className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:border-orange-400">
+                            Hồ sơ
                         </Link>
-                        <Link to="/" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700">
-                            Trang chủ
+                        <Link to="/shipper/delivery" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700">
+                            Trang quét
                         </Link>
+                        <button type="button" onClick={handleLogout} className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 hover:bg-rose-100">
+                            Đăng xuất
+                        </button>
                     </div>
                 </div>
             </header>

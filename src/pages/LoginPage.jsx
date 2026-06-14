@@ -41,9 +41,9 @@ const LoginPage = () => {
             setSuccessMsg('Đăng nhập thành công! Đang chuyển hướng...');
             setTimeout(() => {
                 if (roleId === 'R1') {
-                    navigate('/admin/orders');
+                    navigate('/admin/dashboard');
                 } else if (roleId === 'R3') {
-                    navigate('/manager/users');
+                    navigate('/manager/dashboard');
                 } else if (roleId === 'R4') {
                     navigate('/shipper/delivery');
                 }

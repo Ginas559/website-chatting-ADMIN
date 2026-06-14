@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, Empty, Input, message, Modal, Select, Space, Table, Tag } from 'antd';
 import { useSelector } from 'react-redux';
 import { productApi } from '../api/productApi';
@@ -18,6 +18,7 @@ const ProductManagementPage = () => {
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [categories, setCategories] = useState([]);
     const [saving, setSaving] = useState(false);
 
     const loadProducts = async (page = pagination.current, limit = pagination.pageSize) => {
@@ -42,7 +43,18 @@ const ProductManagementPage = () => {
         void loadProducts(1, pagination.pageSize);
     }, [filters]);
 
-    const categories = useMemo(() => [...new Set(items.map((item) => item.category).filter(Boolean))], [items]);
+    const loadCategories = async () => {
+        try {
+            const res = await productApi.getCategories();
+            setCategories(Array.isArray(res?.data) ? res.data : []);
+        } catch {
+            setCategories([]);
+        }
+    };
+
+    useEffect(() => {
+        void loadCategories();
+    }, []);
 
     const submitProduct = async (payload) => {
         setSaving(true);
@@ -53,6 +65,7 @@ const ProductManagementPage = () => {
             setModalOpen(false);
             setEditingProduct(null);
             await loadProducts();
+            await loadCategories();
         } catch (err) {
             message.error(err?.message || err?.errMessage || 'Không thể lưu sản phẩm');
         } finally {
@@ -134,7 +147,7 @@ const ProductManagementPage = () => {
                     />
                 </Card>
             </div>
-            <ProductFormModal open={modalOpen} product={editingProduct} loading={saving} onCancel={() => setModalOpen(false)} onSubmit={submitProduct} />
+            <ProductFormModal open={modalOpen} product={editingProduct} categories={categories} loading={saving} onCancel={() => setModalOpen(false)} onSubmit={submitProduct} />
         </div>
     );
 };

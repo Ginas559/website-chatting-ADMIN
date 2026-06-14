@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 const toFormValues = (product) => ({
     name: product?.name || '',
     brand: product?.brand || '',
-    category: product?.category || '',
+    category: product?.category ? [product.category] : [],
     price: product?.price || product?.oldPrice || 0,
     salePrice: product?.salePrice || product?.price || 0,
     stock: product?.stock || 0,
@@ -18,7 +18,7 @@ const toFormValues = (product) => ({
     isBestSeller: Boolean(product?.isBestSeller),
 });
 
-const ProductFormModal = ({ open, product, loading, onCancel, onSubmit }) => {
+const ProductFormModal = ({ open, product, categories = [], loading, onCancel, onSubmit }) => {
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -29,6 +29,7 @@ const ProductFormModal = ({ open, product, loading, onCancel, onSubmit }) => {
         const values = await form.validateFields();
         await onSubmit({
             ...values,
+            category: Array.isArray(values.category) ? values.category[0] : values.category,
             images: String(values.imagesText || '').split('\n').map((item) => item.trim()).filter(Boolean),
         });
     };
@@ -52,8 +53,15 @@ const ProductFormModal = ({ open, product, loading, onCancel, onSubmit }) => {
                     <Form.Item name="brand" label="Thương hiệu" rules={[{ required: true, message: 'Nhập thương hiệu' }]}>
                         <Input />
                     </Form.Item>
-                    <Form.Item name="category" label="Danh mục" rules={[{ required: true, message: 'Nhập danh mục' }]}>
-                        <Input />
+                    <Form.Item name="category" label="Danh mục" rules={[{ required: true, message: 'Chọn danh mục' }]}>
+                        <Select
+                            showSearch
+                            mode="tags"
+                            maxCount={1}
+                            placeholder="Chọn hoặc nhập danh mục mới"
+                            options={categories.map((category) => ({ value: category, label: category }))}
+                            tokenSeparators={[',']}
+                        />
                     </Form.Item>
                     <Form.Item name="status" label="Trạng thái" initialValue="ACTIVE">
                         <Select options={[{ value: 'ACTIVE', label: 'ACTIVE' }, { value: 'INACTIVE', label: 'INACTIVE' }]} />
