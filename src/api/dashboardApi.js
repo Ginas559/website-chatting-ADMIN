@@ -1,9 +1,11 @@
 import axiosClient from './axiosClient';
 
 export const dashboardApi = {
-    getOverview: () => axiosClient.get('admin/dashboard/overview'),
-    getRevenue: (range = '7days') => axiosClient.get('admin/dashboard/revenue', { params: { range } }),
-    getOrderStatus: () => axiosClient.get('admin/dashboard/order-status'),
-    getTopProducts: () => axiosClient.get('admin/dashboard/top-products'),
-    getRecentOrders: () => axiosClient.get('admin/dashboard/recent-orders'),
+    getOverview: (params) => axiosClient.get('admin/dashboard/overview', { params }),
+    getRevenue: (params) => axiosClient.get('admin/dashboard/revenue', { params }),
+    getOrderStatus: (params) => axiosClient.get('admin/dashboard/order-status', { params }),
+    getTopProducts: (params) => axiosClient.get('admin/dashboard/top-products', { params }),
+    getRecentOrders: (params) => axiosClient.get('admin/dashboard/recent-orders', { params }),
+    getNewCustomers: (params) => axiosClient.get('admin/dashboard/new-customers', { params }),
+    getCashflow: (params) => axiosClient.get('admin/dashboard/cashflow', { params }),
 };
