@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchAdminProfile, logoutUser } from '../redux/slices/authSlice';
 import ProfileCard from '../components/common/ProfileCard';
+import ChangePasswordPanel from '../components/common/ChangePasswordPanel';
 
 const AdminProfilePage = () => {
     const dispatch = useDispatch();
@@ -19,7 +20,7 @@ const AdminProfilePage = () => {
     };
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f0f4f8] px-4">
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f0f4f8] px-4 py-8">
             <ProfileCard
                 title="Admin Profile"
                 roleLabel="Admin (R1)"
@@ -41,7 +42,7 @@ const AdminProfilePage = () => {
                     to="/management/users"
                     className="rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition-transform hover:-translate-y-0.5 hover:bg-amber-600"
                 >
-                    Mở trang quản lý user
+                    Mở trang quản lý nhân sự
                 </Link>
                 <Link
                     to="/admin/orders"
@@ -50,6 +51,7 @@ const AdminProfilePage = () => {
                     Mở trang quản lý đơn
                 </Link>
             </div>
+            <ChangePasswordPanel />
         </div>
     );
 };

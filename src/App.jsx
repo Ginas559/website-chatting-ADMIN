@@ -6,8 +6,8 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import AdminManagementPage from './pages/AdminManagementPage';
 import AdminOrdersPage from './pages/AdminOrdersPage';
 import AdminProfilePage from './pages/AdminProfilePage';
-import ModeratorProfilePage from './pages/ModeratorProfilePage';
-import ModeratorUsersPage from './pages/ModeratorUsersPage';
+import ManagerProfilePage from './pages/ManagerProfilePage';
+import ShipperProfilePage from './pages/ShipperProfilePage';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
@@ -103,7 +103,7 @@ function App() {
           path="/manager/profile"
           element={
             <ProtectedRoute allowedRoles={['R3']}>
-              <ModeratorProfilePage />
+              <ManagerProfilePage />
             </ProtectedRoute>
           }
         />
@@ -111,19 +111,18 @@ function App() {
           path="/manager/users"
           element={
             <ProtectedRoute allowedRoles={['R3']}>
-              <ModeratorUsersPage />
+              <AdminManagementPage />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/moderator/profile"
-          element={<Navigate to="/manager/profile" replace />}
+          path="/shipper/profile"
+          element={
+            <ProtectedRoute allowedRoles={['R4']}>
+              <ShipperProfilePage />
+            </ProtectedRoute>
+          }
         />
-        <Route
-          path="/moderator/users"
-          element={<Navigate to="/manager/users" replace />}
-        />
-
         <Route
           path="/shipper/delivery"
           element={

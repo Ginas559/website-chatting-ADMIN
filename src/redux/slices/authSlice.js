@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
     getAdminProfileApi,
-    getModeratorProfileApi,
+    getManagerProfileApi,
     loginApi,
     logoutApi,
     refreshTokenApi,
@@ -146,11 +146,11 @@ export const fetchAdminProfile = createAsyncThunk(
     }
 );
 
-export const fetchModeratorProfile = createAsyncThunk(
-    'auth/fetchModeratorProfile',
+export const fetchManagerProfile = createAsyncThunk(
+    'auth/fetchManagerProfile',
     async (_, { rejectWithValue }) => {
         try {
-            return await getModeratorProfileApi();
+            return await getManagerProfileApi();
         } catch (error) {
             return rejectWithValue(error?.response?.data || error?.data || error);
         }
@@ -233,17 +233,17 @@ const authSlice = createSlice({
                 state.profileLoading = false;
                 state.profileError = normalizeError(action.payload, 'Không thể tải thông tin quản trị viên');
             })
-            .addCase(fetchModeratorProfile.pending, (state) => {
+            .addCase(fetchManagerProfile.pending, (state) => {
                 state.profileLoading = true;
                 state.profileError = null;
             })
-            .addCase(fetchModeratorProfile.fulfilled, (state, action) => {
+            .addCase(fetchManagerProfile.fulfilled, (state, action) => {
                 state.profileLoading = false;
                 state.user = action.payload?.user || action.payload?.data?.user || null;
                 state.isAuthenticated = true;
                 persistAuthUser(state.user);
             })
-            .addCase(fetchModeratorProfile.rejected, (state, action) => {
+            .addCase(fetchManagerProfile.rejected, (state, action) => {
                 state.profileLoading = false;
                 state.profileError = normalizeError(action.payload, 'Không thể tải thông tin quản lý');
             })

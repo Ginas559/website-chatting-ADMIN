@@ -25,6 +25,11 @@ const emptyForm = {
     isActive: 'true'
 };
 
+const roleLabels = {
+    R3: 'Manager',
+    R4: 'Shipper',
+};
+
 const getRoleIdFromToken = () => {
     const token = localStorage.getItem('accessToken');
 
@@ -65,6 +70,8 @@ const AdminManagementPage = () => {
 
     const currentRoleId = useMemo(() => user?.roleId || getRoleIdFromToken(), [user?.roleId]);
     const isAdmin = currentRoleId === 'R1';
+    const isManager = currentRoleId === 'R3';
+    const canEditAccounts = isAdmin || isManager;
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -75,7 +82,10 @@ const AdminManagementPage = () => {
     const [form, setForm] = useState(emptyForm);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
-    const isModeratorDraft = !editingId && form.roleId === 'R3';
+    const [resetTarget, setResetTarget] = useState(null);
+    const [resetPasswordValue, setResetPasswordValue] = useState('');
+    const [resetting, setResetting] = useState(false);
+    const isManagerDraft = !editingId && form.roleId === 'R3';
 
     const loadUsers = async () => {
         setLoading(true);
@@ -85,7 +95,7 @@ const AdminManagementPage = () => {
             const res = await userManagementService.listUsers();
             setUsers(res?.users || []);
         } catch (err) {
-            setError(normalizeError(err, 'Không thể tải danh sách người dùng'));
+            setError(normalizeError(err, 'Không thể tải danh sách tài khoản nội bộ'));
         } finally {
             setLoading(false);
         }
@@ -109,13 +119,13 @@ const AdminManagementPage = () => {
         setEditingId('');
     };
 
-    const handleCreateModerator = () => {
+    const handleCreateStaff = (roleId = isManager ? 'R4' : 'R3') => {
         setSuccess('');
         setError('');
         setEditingId('');
         setForm({
             ...emptyForm,
-            roleId: 'R3'
+            roleId
         });
     };
 
@@ -125,7 +135,7 @@ const AdminManagementPage = () => {
     };
 
     const handleEdit = (item) => {
-        if (!isAdmin) return;
+        if (!canEditAccounts) return;
         setEditingId(item.id);
         setSuccess('');
         setError('');
@@ -137,7 +147,7 @@ const AdminManagementPage = () => {
             address: item.address || '',
             phoneNumber: item.phoneNumber || '',
             image: item.image || '',
-            roleId: item.roleId || 'R2',
+            roleId: item.roleId || 'R4',
             positionId: item.positionId || '',
             gender: String(Boolean(item.gender)),
             isActive: String(Boolean(item.isActive))
@@ -146,8 +156,8 @@ const AdminManagementPage = () => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        if (!isAdmin) {
-            setError('Chỉ Admin mới được tạo hoặc sửa tài khoản');
+        if (!canEditAccounts) {
+            setError('Bạn không có quyền tạo hoặc sửa tài khoản nội bộ');
             return;
         }
 
@@ -167,30 +177,30 @@ const AdminManagementPage = () => {
             return;
         }
 
-        if (!payload.password.trim()) {
+        if (editingId || !payload.password.trim()) {
             delete payload.password;
         }
 
         try {
             if (editingId) {
                 await userManagementService.updateUser(editingId, payload);
-                setSuccess('Cập nhật người dùng thành công');
+                setSuccess('Cập nhật tài khoản nội bộ thành công');
             } else {
                 await userManagementService.createUser(payload);
-                setSuccess('Tạo người dùng thành công');
+                setSuccess(`Tạo tài khoản ${roleLabels[payload.roleId] || 'nội bộ'} thành công`);
             }
 
             resetForm();
             await loadUsers();
         } catch (err) {
-            setError(normalizeError(err, 'Không thể lưu người dùng'));
+            setError(normalizeError(err, 'Không thể lưu tài khoản nội bộ'));
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!isAdmin || !deleteTarget) return;
+        if (!canEditAccounts || !deleteTarget) return;
 
         setDeleting(true);
         setError('');
@@ -198,13 +208,37 @@ const AdminManagementPage = () => {
 
         try {
             await userManagementService.deleteUser(deleteTarget.id);
-            setSuccess('Xóa người dùng thành công');
+            setSuccess('Xóa tài khoản nội bộ thành công');
             setDeleteTarget(null);
             await loadUsers();
         } catch (err) {
-            setError(normalizeError(err, 'Không thể xóa người dùng'));
+            setError(normalizeError(err, 'Không thể xóa tài khoản nội bộ'));
         } finally {
             setDeleting(false);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        if (!canEditAccounts || !resetTarget) return;
+
+        if (resetPasswordValue.length < 6) {
+            setError('Mật khẩu mới tối thiểu 6 ký tự');
+            return;
+        }
+
+        setResetting(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            await userManagementService.resetPassword(resetTarget.id, resetPasswordValue);
+            setSuccess(`Reset mật khẩu cho ${resetTarget.email} thành công`);
+            setResetTarget(null);
+            setResetPasswordValue('');
+        } catch (err) {
+            setError(normalizeError(err, 'Không thể reset mật khẩu'));
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -213,20 +247,28 @@ const AdminManagementPage = () => {
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-indigo-500">Internal Management</p>
-                        <h1 className="mt-2 text-3xl font-black text-slate-900">Quản lý người dùng nội bộ</h1>
-                        <p className="mt-2 text-sm text-slate-500">Dùng cho Admin để tạo, cập nhật và theo dõi tài khoản.</p>
+                        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-indigo-500">Staff Management</p>
+                        <h1 className="mt-2 text-3xl font-black text-slate-900">Quản lý tài khoản nội bộ</h1>
+                        <p className="mt-2 text-sm text-slate-500">Admin quản lý Manager/Shipper. Manager quản lý Shipper nếu được phân quyền.</p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
                         <button
-                            onClick={handleCreateModerator}
+                            onClick={() => handleCreateStaff(isManager ? 'R4' : 'R3')}
                             className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
                         >
-                            Tạo Moderator
+                            {isManager ? 'Tạo Shipper' : 'Tạo Manager'}
                         </button>
+                        {isAdmin && (
+                            <button
+                                onClick={() => handleCreateStaff('R4')}
+                                className="rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sky-600"
+                            >
+                                Tạo Shipper
+                            </button>
+                        )}
                         <Link
-                            to={currentRoleId === 'R3' ? '/moderator/users' : '/admin/profile'}
+                            to={currentRoleId === 'R3' ? '/manager/profile' : '/admin/profile'}
                             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-500 hover:text-indigo-500"
                         >
                             Về profile
@@ -256,16 +298,18 @@ const AdminManagementPage = () => {
                     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                         <div className="mb-5">
                             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-indigo-500">
-                                {editingId ? 'Cập nhật tài khoản' : isModeratorDraft ? 'Tạo Moderator' : 'Tạo tài khoản'}
+                                {editingId ? 'Cập nhật tài khoản' : `Tạo ${roleLabels[form.roleId] || 'tài khoản'}`}
                             </p>
                             <h2 className="mt-1 text-2xl font-bold text-slate-900">
-                                {editingId ? 'Sửa người dùng' : isModeratorDraft ? 'Thêm moderator mới' : 'Thêm người dùng mới'}
+                                {editingId ? 'Sửa tài khoản nội bộ' : `Thêm ${roleLabels[form.roleId] || 'tài khoản'} mới`}
                             </h2>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <FormInput label="Email" type="email" value={form.email} onChange={handleChange('email')} placeholder="name@example.com" />
-                            <FormInput label={editingId ? 'Mật khẩu mới' : 'Mật khẩu'} type="password" value={form.password} onChange={handleChange('password')} placeholder={editingId ? 'Để trống nếu không đổi' : 'Ít nhất 6 ký tự'} />
+                            {!editingId && (
+                                <FormInput label="Mật khẩu" type="password" value={form.password} onChange={handleChange('password')} placeholder="Ít nhất 6 ký tự" />
+                            )}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <FormInput label="Họ" value={form.firstName} onChange={handleChange('firstName')} />
                                 <FormInput label="Tên" value={form.lastName} onChange={handleChange('lastName')} />
@@ -301,17 +345,16 @@ const AdminManagementPage = () => {
                             <label className="flex flex-col gap-1 text-left text-sm font-semibold text-gray-600">
                                 Role
                                 <select value={form.roleId} onChange={handleChange('roleId')} className="rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-blue-500">
-                                    {isAdmin && <option value="R1">R1 - Admin</option>}
-                                    <option value="R3">R3 - Moderator</option>
-                                    <option value="R2">R2 - User</option>
+                                    {isAdmin && <option value="R3">R3 - Manager</option>}
+                                    <option value="R4">R4 - Shipper</option>
                                 </select>
                             </label>
 
                             <div className="flex gap-3 pt-2">
-                                <SubmitButton loading={saving} type="primary" htmlType="submit" className="bg-indigo-600 hover:!bg-indigo-700" disabled={!isAdmin}>
-                                    {editingId ? 'Lưu thay đổi' : isModeratorDraft ? 'Tạo Moderator' : 'Tạo mới'}
+                                <SubmitButton loading={saving} type="primary" htmlType="submit" className="bg-indigo-600 hover:!bg-indigo-700" disabled={!canEditAccounts}>
+                                    {editingId ? 'Lưu thay đổi' : `Tạo ${roleLabels[form.roleId] || 'tài khoản'}`}
                                 </SubmitButton>
-                                {editingId && isAdmin && (
+                                {editingId && canEditAccounts && (
                                     <button
                                         type="button"
                                         onClick={resetForm}
@@ -328,7 +371,7 @@ const AdminManagementPage = () => {
                         <div className="mb-4 flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-500">Danh sách</p>
-                                <h2 className="mt-1 text-2xl font-bold text-slate-900">Người dùng trong hệ thống</h2>
+                                <h2 className="mt-1 text-2xl font-bold text-slate-900">Tài khoản cấp dưới</h2>
                             </div>
                             <button
                                 onClick={loadUsers}
@@ -341,7 +384,7 @@ const AdminManagementPage = () => {
                         {loading ? (
                             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Đang tải dữ liệu...</div>
                         ) : users.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Chưa có người dùng nào.</div>
+                            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Chưa có tài khoản cấp dưới nào.</div>
                         ) : (
                             <div className="overflow-hidden rounded-2xl border border-slate-200">
                                 <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -369,7 +412,7 @@ const AdminManagementPage = () => {
                                                 <td className="px-4 py-3 text-slate-500">{formatDate(item.updatedAt)}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-wrap gap-2">
-                                                        {isAdmin && (
+                                                        {canEditAccounts && (
                                                             <button
                                                                 onClick={() => handleEdit(item)}
                                                                 className="rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-50"
@@ -377,7 +420,18 @@ const AdminManagementPage = () => {
                                                                 Sửa
                                                             </button>
                                                         )}
-                                                        {isAdmin && (
+                                                        {canEditAccounts && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setResetTarget(item);
+                                                                    setResetPasswordValue('');
+                                                                }}
+                                                                className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-600 transition-colors hover:bg-amber-50"
+                                                            >
+                                                                Reset mật khẩu
+                                                            </button>
+                                                        )}
+                                                        {canEditAccounts && (
                                                             <button
                                                                 onClick={() => setDeleteTarget(item)}
                                                                 className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
@@ -403,14 +457,51 @@ const AdminManagementPage = () => {
 
 <ConfirmDialog
     open={Boolean(deleteTarget)}
-    title="Xóa người dùng?"
+    title="Xóa tài khoản nội bộ?"
     message={`Tài khoản ${deleteTarget?.email || ''} sẽ bị xóa khỏi hệ thống. Hành động này không thể hoàn tác.`}
-    confirmLabel="Xóa người dùng"
+    confirmLabel="Xóa tài khoản"
     tone="danger"
     loading={deleting}
     onCancel={() => setDeleteTarget(null)}
     onConfirm={handleDelete}
 />
+{resetTarget && (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <h3 className="text-xl font-black text-slate-900">Reset mật khẩu</h3>
+            <p className="mt-2 text-sm text-slate-500">Tài khoản: {resetTarget.email}</p>
+            <div className="mt-5">
+                <FormInput
+                    label="Mật khẩu mới"
+                    type="password"
+                    value={resetPasswordValue}
+                    onChange={(event) => setResetPasswordValue(event.target.value)}
+                    placeholder="Ít nhất 6 ký tự"
+                />
+            </div>
+            <div className="mt-5 flex gap-3">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setResetTarget(null);
+                        setResetPasswordValue('');
+                    }}
+                    className="h-11 flex-1 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700"
+                >
+                    Hủy
+                </button>
+                <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={resetting}
+                    className="h-11 flex-1 rounded-xl bg-amber-500 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                    {resetting ? 'Đang reset...' : 'Reset'}
+                </button>
+            </div>
+        </div>
+    </div>
+)}
         </div>
     );
 };

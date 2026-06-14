@@ -14,6 +14,10 @@ export const logoutApi = (refreshToken) => {
     return axios.post('logout', { refreshToken });
 };
 
+export const changePasswordApi = ({ currentPassword, newPassword }) => {
+    return axios.patch('me/password', { currentPassword, newPassword });
+};
+
 export const verifyDeliveryQrApi = (qrContent) => {
     return axios.post('orders/delivery/verify', { qrContent });
 };
@@ -54,8 +58,12 @@ export const getAdminProfileApi = () => {
     return axios.get('/admin/profile', { baseURL: '' });
 };
 
-export const getModeratorProfileApi = () => {
-    return axios.get('/moderator/profile', { baseURL: '' });
+export const getManagerProfileApi = () => {
+    return axios.get('/manager/profile', { baseURL: '' });
+};
+
+export const getShipperProfileApi = () => {
+    return axios.get('/shipper/profile', { baseURL: '' });
 };
 
 export const getProfileByIdApi = (userId) => {
