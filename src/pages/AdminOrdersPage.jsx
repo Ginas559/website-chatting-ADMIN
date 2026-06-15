@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { message } from 'antd';
 import { logoutUser } from '../redux/slices/authSlice';
 import {
     createAdminDeliveryQrApi,
@@ -45,6 +46,7 @@ const STATUS_LABELS = {
     PREPARING: 'Shop đang chuẩn bị',
     SHIPPING: 'Đang giao hàng',
     DELIVERED: 'Đã giao thành công',
+    DELIVERY_FAILED: 'Giao thất bại',
     CANCELLED: 'Đã hủy',
     CANCEL_REQUESTED: 'Yêu cầu hủy',
 };
@@ -56,6 +58,7 @@ const STATUS_STYLES = {
     PREPARING: 'bg-orange-50 text-orange-700',
     SHIPPING: 'bg-blue-50 text-blue-700',
     DELIVERED: 'bg-emerald-50 text-emerald-700',
+    DELIVERY_FAILED: 'bg-red-50 text-red-700',
     CANCELLED: 'bg-slate-100 text-slate-600',
     CANCEL_REQUESTED: 'bg-rose-50 text-rose-700',
 };
@@ -67,9 +70,29 @@ const STATUS_OPTIONS = [
     { value: 'PREPARING', label: 'Đang chuẩn bị' },
     { value: 'SHIPPING', label: 'Đang giao hàng' },
     { value: 'DELIVERED', label: 'Đã giao' },
+    { value: 'DELIVERY_FAILED', label: 'Giao thất bại' },
     { value: 'CANCEL_REQUESTED', label: 'Yêu cầu hủy' },
     { value: 'CANCELLED', label: 'Đã hủy' },
 ];
+
+const RISK_OPTIONS = [
+    { value: '', label: 'Tất cả mức rủi ro' },
+    { value: 'LOW', label: 'LOW' },
+    { value: 'MEDIUM', label: 'MEDIUM' },
+    { value: 'HIGH', label: 'HIGH' },
+];
+
+const RISK_STYLES = {
+    LOW: 'bg-emerald-50 text-emerald-700',
+    MEDIUM: 'bg-amber-50 text-amber-700',
+    HIGH: 'bg-rose-50 text-rose-700',
+};
+
+const RISK_SOURCE_LABELS = {
+    AI_MODEL: 'AI Model',
+    FALLBACK_RULE: 'Rule-based fallback',
+    FALLBACK_DEFAULT: 'Default fallback',
+};
 
 const NEXT_STATUS = {
     NEW: 'CONFIRMED',
@@ -94,6 +117,8 @@ const formatDateTime = (value) => {
     if (!value) return '-';
     return new Date(value).toLocaleString('vi-VN');
 };
+
+const formatPercent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
 
 const getStatusLabel = (status) => STATUS_LABELS[status] || status || '-';
 
@@ -128,6 +153,9 @@ const AdminOrdersPage = () => {
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
     const [status, setStatus] = useState('');
+    const [riskLevel, setRiskLevel] = useState('');
+    const [onlySuspicious, setOnlySuspicious] = useState(false);
+    const [riskModalOrder, setRiskModalOrder] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
@@ -145,7 +173,9 @@ const AdminOrdersPage = () => {
         page: currentPage,
         limit: 10,
         ...(status ? { status } : {}),
-    }), [currentPage, status]);
+        ...(riskLevel ? { riskLevel } : {}),
+        ...(onlySuspicious ? { isSuspicious: true } : {}),
+    }), [currentPage, status, riskLevel, onlySuspicious]);
 
     const loadOrders = useCallback(async (params = queryParams) => {
         setLoading(true);
@@ -160,7 +190,9 @@ const AdminOrdersPage = () => {
             setOrders(Array.isArray(res.data.items) ? res.data.items : []);
             setPagination(res.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
         } catch (err) {
-            setError(normalizeError(err, 'Không thể tải danh sách đơn hàng'));
+            const errorMessage = normalizeError(err, 'Không thể tải danh sách đơn hàng');
+            setError(errorMessage);
+            message.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -199,15 +231,16 @@ const AdminOrdersPage = () => {
         await openDetail(order.orderCode || order.id);
     };
 
-    const handleStatusChange = async () => {
-        if (!selectedOrder || !NEXT_STATUS[selectedOrder.status]) return;
+    const handleStatusChange = async (overrideStatus = '') => {
+        const requestedStatus = overrideStatus || (selectedOrder ? NEXT_STATUS[selectedOrder.status] : '');
+        if (!selectedOrder || !requestedStatus) return;
 
         setMutating(true);
         setError('');
         setSuccess('');
 
         try {
-            const nextStatus = NEXT_STATUS[selectedOrder.status];
+            const nextStatus = requestedStatus;
             const res = await updateAdminOrderStatusApi(selectedOrder.orderCode || selectedOrder.id, nextStatus, note);
             if (res?.errCode !== 0 || !res?.data) {
                 throw res;
@@ -297,6 +330,18 @@ const AdminOrdersPage = () => {
         setPagination((current) => ({ ...current, page: 1 }));
     };
 
+    const changeRiskFilter = (nextRiskLevel) => {
+        setRiskLevel(nextRiskLevel);
+        setSelectedOrder(null);
+        setPagination((current) => ({ ...current, page: 1 }));
+    };
+
+    const changeSuspiciousFilter = () => {
+        setOnlySuspicious((current) => !current);
+        setSelectedOrder(null);
+        setPagination((current) => ({ ...current, page: 1 }));
+    };
+
     const changePage = (nextPage) => {
         setSelectedOrder(null);
         setPagination((current) => ({ ...current, page: Math.min(Math.max(1, nextPage), totalPages) }));
@@ -319,6 +364,14 @@ const AdminOrdersPage = () => {
             tone: nextStatus === 'DELIVERED' ? 'warning' : 'primary',
             onConfirm: handleStatusChange,
         }
+        : pendingAction === 'DELIVERY_FAILED'
+            ? {
+                title: 'Đánh dấu giao thất bại?',
+                message: 'Đơn sẽ kết thúc ở trạng thái giao thất bại. Trạng thái thanh toán không bị đổi sang FAILED.',
+                confirmLabel: 'Đánh dấu thất bại',
+                tone: 'danger',
+                onConfirm: () => handleStatusChange('DELIVERY_FAILED'),
+            }
         : pendingAction === 'APPROVE_CANCEL'
             ? {
                 title: 'Chấp nhận hủy đơn?',
@@ -393,19 +446,49 @@ const AdminOrdersPage = () => {
                             ))}
                         </div>
 
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                            {RISK_OPTIONS.map((item) => (
+                                <button
+                                    key={item.value || 'all-risk'}
+                                    type="button"
+                                    onClick={() => changeRiskFilter(item.value)}
+                                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                                        riskLevel === item.value
+                                            ? 'border-rose-500 bg-rose-50 text-rose-700'
+                                            : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
+                                    }`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={changeSuspiciousFilter}
+                                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                                    onlySuspicious
+                                        ? 'border-rose-500 bg-rose-600 text-white'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
+                                }`}
+                            >
+                                Chỉ đơn đáng ngờ
+                            </button>
+                        </div>
+
                         {loading ? (
                             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Đang tải đơn hàng...</div>
                         ) : orders.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Chưa có đơn hàng phù hợp.</div>
                         ) : (
                             <div className="admin-orders-scroll overflow-x-auto rounded-2xl border border-slate-200">
-                                <table className="min-w-[860px] divide-y divide-slate-200 text-left text-sm">
+                                <table className="min-w-[1120px] divide-y divide-slate-200 text-left text-sm">
                                     <thead className="bg-slate-50 text-slate-600">
                                         <tr>
                                             <th className="w-[220px] px-4 py-3 font-semibold">Mã đơn</th>
                                             <th className="w-[250px] px-4 py-3 font-semibold">Khách hàng</th>
                                             <th className="w-[150px] px-4 py-3 font-semibold">Tổng tiền</th>
                                             <th className="w-[160px] px-4 py-3 font-semibold">Trạng thái</th>
+                                            <th className="w-[120px] px-4 py-3 font-semibold">Rủi ro</th>
+                                            <th className="w-[100px] px-4 py-3 font-semibold">Điểm</th>
                                             <th className="w-[120px] px-4 py-3 font-semibold">Hành động</th>
                                         </tr>
                                     </thead>
@@ -414,7 +497,7 @@ const AdminOrdersPage = () => {
                                             <tr
                                                 key={order.id || order.orderCode}
                                                 onClick={() => openDetail(order.orderCode || order.id)}
-                                                className="cursor-pointer align-top transition-colors hover:bg-orange-50/40"
+                                                className={`cursor-pointer align-top transition-colors hover:bg-orange-50/40 ${order.riskLevel === 'HIGH' ? 'bg-rose-50/50' : ''}`}
                                             >
                                                 <td className="px-4 py-3">
                                                     <div className="font-semibold text-slate-900">#{order.orderCode}</div>
@@ -431,15 +514,32 @@ const AdminOrdersPage = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <button
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            openDetail(order.orderCode || order.id);
-                                                        }}
-                                                        className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-50"
-                                                    >
-                                                        Chi tiết
-                                                    </button>
+                                                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${RISK_STYLES[order.riskLevel] || RISK_STYLES.LOW}`}>
+                                                        {order.riskLevel || 'LOW'}
+                                                    </span>
+                                                </td>
+                                                <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-800">{Number(order.riskScore || 0)}/100</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                openDetail(order.orderCode || order.id);
+                                                            }}
+                                                            className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-50"
+                                                        >
+                                                            Chi tiết
+                                                        </button>
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setRiskModalOrder(order);
+                                                            }}
+                                                            className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                                                        >
+                                                            Xem lý do
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -505,6 +605,39 @@ const AdminOrdersPage = () => {
                                     </span>
                                 </div>
 
+                                <div className={`rounded-2xl border p-4 text-left ${selectedOrder.riskLevel === 'HIGH' ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-white'}`}>
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <div className="text-sm font-semibold text-slate-900">Rủi ro đơn hàng</div>
+                                            <div className="mt-1 text-xs font-medium text-slate-500">Cảnh báo chỉ hỗ trợ kiểm duyệt, không chặn xử lý đơn.</div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${RISK_STYLES[selectedOrder.riskLevel] || RISK_STYLES.LOW}`}>
+                                                {selectedOrder.riskLevel || 'LOW'}
+                                            </span>
+                                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">
+                                                {Number(selectedOrder.riskScore || 0)}/100
+                                            </span>
+                                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">
+                                                {RISK_SOURCE_LABELS[selectedOrder.riskSource] || selectedOrder.riskSource || 'Default fallback'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 grid gap-2 text-xs font-semibold text-slate-600 sm:grid-cols-2">
+                                        <div className="rounded-xl bg-white px-4 py-3">
+                                            Fraud probability: {formatPercent(selectedOrder.fraudProbability)}
+                                        </div>
+                                        <div className="rounded-xl bg-white px-4 py-3">
+                                            Risk source: {selectedOrder.riskSource || 'FALLBACK_DEFAULT'}
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                                        {Array.isArray(selectedOrder.riskReasons) && selectedOrder.riskReasons.length
+                                            ? selectedOrder.riskReasons.join('; ')
+                                            : 'Không có cảnh báo'}
+                                    </div>
+                                </div>
+
                                 {selectedOrder.status === 'CANCELLED' ? (
                                     <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-left">
                                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -522,6 +655,28 @@ const AdminOrdersPage = () => {
                                             <span className="font-semibold text-slate-600">Lý do hủy: </span>
                                             <span className="break-words">
                                                 {getLatestStatusEntry(selectedOrder, 'CANCELLED')?.note || 'Không rõ lý do'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {selectedOrder.status === 'DELIVERY_FAILED' ? (
+                                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-left">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <div className="text-sm font-semibold text-red-900">Đơn hàng giao thất bại</div>
+                                                <div className="mt-1 text-xs font-medium text-red-700">
+                                                    Cập nhật lúc {formatDateTime(getLatestStatusEntry(selectedOrder, 'DELIVERY_FAILED')?.changedAt)}
+                                                </div>
+                                            </div>
+                                            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-red-700">
+                                                Đã kết thúc
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm leading-6 text-slate-800">
+                                            <span className="font-semibold text-slate-600">Lý do giao thất bại: </span>
+                                            <span className="break-words">
+                                                {getLatestStatusEntry(selectedOrder, 'DELIVERY_FAILED')?.note || 'Không rõ lý do'}
                                             </span>
                                         </div>
                                     </div>
@@ -650,9 +805,16 @@ const AdminOrdersPage = () => {
                                             </button>
                                         </div>
                                     ) : NEXT_STATUS[selectedOrder.status] ? (
-                                        <button type="button" onClick={() => setPendingAction('STATUS')} disabled={mutating} className="mt-4 h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
-                                            Chuyển sang: {getStatusLabel(NEXT_STATUS[selectedOrder.status])}
-                                        </button>
+                                        <div className="mt-4 grid gap-3">
+                                            <button type="button" onClick={() => setPendingAction('STATUS')} disabled={mutating} className="h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                Chuyển sang: {getStatusLabel(NEXT_STATUS[selectedOrder.status])}
+                                            </button>
+                                            {selectedOrder.status === 'SHIPPING' ? (
+                                                <button type="button" onClick={() => setPendingAction('DELIVERY_FAILED')} disabled={mutating} className="h-11 w-full rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60">
+                                                    Đánh dấu giao thất bại
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     ) : (
                                         <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
                                             Đơn hàng không còn hành động xử lý tiếp theo.
@@ -704,6 +866,36 @@ const AdminOrdersPage = () => {
     onCancel={() => setPendingAction('')}
     onConfirm={pendingActionConfig?.onConfirm}
 />
+{riskModalOrder ? (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 px-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <div className="text-lg font-bold text-slate-900">Lý do cảnh báo</div>
+                    <div className="mt-1 text-sm text-slate-500">#{riskModalOrder.orderCode}</div>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setRiskModalOrder(null)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                    Đóng
+                </button>
+            </div>
+            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {Array.isArray(riskModalOrder.riskReasons) && riskModalOrder.riskReasons.length ? (
+                    <ul className="space-y-2 text-left text-sm font-medium text-slate-700">
+                        {riskModalOrder.riskReasons.map((reason) => (
+                            <li key={reason} className="rounded-lg bg-white px-3 py-2">{reason}</li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="text-center text-sm font-medium text-slate-500">Không có cảnh báo</div>
+                )}
+            </div>
+        </div>
+    </div>
+) : null}
         </div>
     );
 };
