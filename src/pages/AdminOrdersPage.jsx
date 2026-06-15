@@ -46,6 +46,7 @@ const STATUS_LABELS = {
     PREPARING: 'Shop đang chuẩn bị',
     SHIPPING: 'Đang giao hàng',
     DELIVERED: 'Đã giao thành công',
+    DELIVERY_FAILED: 'Giao thất bại',
     CANCELLED: 'Đã hủy',
     CANCEL_REQUESTED: 'Yêu cầu hủy',
 };
@@ -57,6 +58,7 @@ const STATUS_STYLES = {
     PREPARING: 'bg-orange-50 text-orange-700',
     SHIPPING: 'bg-blue-50 text-blue-700',
     DELIVERED: 'bg-emerald-50 text-emerald-700',
+    DELIVERY_FAILED: 'bg-red-50 text-red-700',
     CANCELLED: 'bg-slate-100 text-slate-600',
     CANCEL_REQUESTED: 'bg-rose-50 text-rose-700',
 };
@@ -68,6 +70,7 @@ const STATUS_OPTIONS = [
     { value: 'PREPARING', label: 'Đang chuẩn bị' },
     { value: 'SHIPPING', label: 'Đang giao hàng' },
     { value: 'DELIVERED', label: 'Đã giao' },
+    { value: 'DELIVERY_FAILED', label: 'Giao thất bại' },
     { value: 'CANCEL_REQUESTED', label: 'Yêu cầu hủy' },
     { value: 'CANCELLED', label: 'Đã hủy' },
 ];
@@ -83,6 +86,12 @@ const RISK_STYLES = {
     LOW: 'bg-emerald-50 text-emerald-700',
     MEDIUM: 'bg-amber-50 text-amber-700',
     HIGH: 'bg-rose-50 text-rose-700',
+};
+
+const RISK_SOURCE_LABELS = {
+    AI_MODEL: 'AI Model',
+    FALLBACK_RULE: 'Rule-based fallback',
+    FALLBACK_DEFAULT: 'Default fallback',
 };
 
 const NEXT_STATUS = {
@@ -108,6 +117,8 @@ const formatDateTime = (value) => {
     if (!value) return '-';
     return new Date(value).toLocaleString('vi-VN');
 };
+
+const formatPercent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
 
 const getStatusLabel = (status) => STATUS_LABELS[status] || status || '-';
 
@@ -220,15 +231,16 @@ const AdminOrdersPage = () => {
         await openDetail(order.orderCode || order.id);
     };
 
-    const handleStatusChange = async () => {
-        if (!selectedOrder || !NEXT_STATUS[selectedOrder.status]) return;
+    const handleStatusChange = async (overrideStatus = '') => {
+        const requestedStatus = overrideStatus || (selectedOrder ? NEXT_STATUS[selectedOrder.status] : '');
+        if (!selectedOrder || !requestedStatus) return;
 
         setMutating(true);
         setError('');
         setSuccess('');
 
         try {
-            const nextStatus = NEXT_STATUS[selectedOrder.status];
+            const nextStatus = requestedStatus;
             const res = await updateAdminOrderStatusApi(selectedOrder.orderCode || selectedOrder.id, nextStatus, note);
             if (res?.errCode !== 0 || !res?.data) {
                 throw res;
@@ -352,6 +364,14 @@ const AdminOrdersPage = () => {
             tone: nextStatus === 'DELIVERED' ? 'warning' : 'primary',
             onConfirm: handleStatusChange,
         }
+        : pendingAction === 'DELIVERY_FAILED'
+            ? {
+                title: 'Đánh dấu giao thất bại?',
+                message: 'Đơn sẽ kết thúc ở trạng thái giao thất bại. Trạng thái thanh toán không bị đổi sang FAILED.',
+                confirmLabel: 'Đánh dấu thất bại',
+                tone: 'danger',
+                onConfirm: () => handleStatusChange('DELIVERY_FAILED'),
+            }
         : pendingAction === 'APPROVE_CANCEL'
             ? {
                 title: 'Chấp nhận hủy đơn?',
@@ -598,6 +618,17 @@ const AdminOrdersPage = () => {
                                             <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">
                                                 {Number(selectedOrder.riskScore || 0)}/100
                                             </span>
+                                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">
+                                                {RISK_SOURCE_LABELS[selectedOrder.riskSource] || selectedOrder.riskSource || 'Default fallback'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 grid gap-2 text-xs font-semibold text-slate-600 sm:grid-cols-2">
+                                        <div className="rounded-xl bg-white px-4 py-3">
+                                            Fraud probability: {formatPercent(selectedOrder.fraudProbability)}
+                                        </div>
+                                        <div className="rounded-xl bg-white px-4 py-3">
+                                            Risk source: {selectedOrder.riskSource || 'FALLBACK_DEFAULT'}
                                         </div>
                                     </div>
                                     <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
@@ -624,6 +655,28 @@ const AdminOrdersPage = () => {
                                             <span className="font-semibold text-slate-600">Lý do hủy: </span>
                                             <span className="break-words">
                                                 {getLatestStatusEntry(selectedOrder, 'CANCELLED')?.note || 'Không rõ lý do'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {selectedOrder.status === 'DELIVERY_FAILED' ? (
+                                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-left">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <div className="text-sm font-semibold text-red-900">Đơn hàng giao thất bại</div>
+                                                <div className="mt-1 text-xs font-medium text-red-700">
+                                                    Cập nhật lúc {formatDateTime(getLatestStatusEntry(selectedOrder, 'DELIVERY_FAILED')?.changedAt)}
+                                                </div>
+                                            </div>
+                                            <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-red-700">
+                                                Đã kết thúc
+                                            </span>
+                                        </div>
+                                        <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm leading-6 text-slate-800">
+                                            <span className="font-semibold text-slate-600">Lý do giao thất bại: </span>
+                                            <span className="break-words">
+                                                {getLatestStatusEntry(selectedOrder, 'DELIVERY_FAILED')?.note || 'Không rõ lý do'}
                                             </span>
                                         </div>
                                     </div>
@@ -752,9 +805,16 @@ const AdminOrdersPage = () => {
                                             </button>
                                         </div>
                                     ) : NEXT_STATUS[selectedOrder.status] ? (
-                                        <button type="button" onClick={() => setPendingAction('STATUS')} disabled={mutating} className="mt-4 h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
-                                            Chuyển sang: {getStatusLabel(NEXT_STATUS[selectedOrder.status])}
-                                        </button>
+                                        <div className="mt-4 grid gap-3">
+                                            <button type="button" onClick={() => setPendingAction('STATUS')} disabled={mutating} className="h-11 w-full rounded-xl bg-orange-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                Chuyển sang: {getStatusLabel(NEXT_STATUS[selectedOrder.status])}
+                                            </button>
+                                            {selectedOrder.status === 'SHIPPING' ? (
+                                                <button type="button" onClick={() => setPendingAction('DELIVERY_FAILED')} disabled={mutating} className="h-11 w-full rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60">
+                                                    Đánh dấu giao thất bại
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     ) : (
                                         <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
                                             Đơn hàng không còn hành động xử lý tiếp theo.

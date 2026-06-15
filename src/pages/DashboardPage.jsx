@@ -14,6 +14,7 @@ const statusColor = {
     PREPARING: 'purple',
     SHIPPING: 'orange',
     DELIVERED: 'green',
+    DELIVERY_FAILED: 'red',
     CANCELLED: 'red',
     CANCEL_REQUESTED: 'volcano',
     PENDING_PAYMENT: 'gold',
