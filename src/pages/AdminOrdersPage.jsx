@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { message } from 'antd';
 import { logoutUser } from '../redux/slices/authSlice';
 import {
     createAdminDeliveryQrApi,
@@ -71,6 +72,19 @@ const STATUS_OPTIONS = [
     { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 
+const RISK_OPTIONS = [
+    { value: '', label: 'Tất cả mức rủi ro' },
+    { value: 'LOW', label: 'LOW' },
+    { value: 'MEDIUM', label: 'MEDIUM' },
+    { value: 'HIGH', label: 'HIGH' },
+];
+
+const RISK_STYLES = {
+    LOW: 'bg-emerald-50 text-emerald-700',
+    MEDIUM: 'bg-amber-50 text-amber-700',
+    HIGH: 'bg-rose-50 text-rose-700',
+};
+
 const NEXT_STATUS = {
     NEW: 'CONFIRMED',
     CONFIRMED: 'PREPARING',
@@ -128,6 +142,9 @@ const AdminOrdersPage = () => {
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
     const [status, setStatus] = useState('');
+    const [riskLevel, setRiskLevel] = useState('');
+    const [onlySuspicious, setOnlySuspicious] = useState(false);
+    const [riskModalOrder, setRiskModalOrder] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
@@ -145,7 +162,9 @@ const AdminOrdersPage = () => {
         page: currentPage,
         limit: 10,
         ...(status ? { status } : {}),
-    }), [currentPage, status]);
+        ...(riskLevel ? { riskLevel } : {}),
+        ...(onlySuspicious ? { isSuspicious: true } : {}),
+    }), [currentPage, status, riskLevel, onlySuspicious]);
 
     const loadOrders = useCallback(async (params = queryParams) => {
         setLoading(true);
@@ -160,7 +179,9 @@ const AdminOrdersPage = () => {
             setOrders(Array.isArray(res.data.items) ? res.data.items : []);
             setPagination(res.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
         } catch (err) {
-            setError(normalizeError(err, 'Không thể tải danh sách đơn hàng'));
+            const errorMessage = normalizeError(err, 'Không thể tải danh sách đơn hàng');
+            setError(errorMessage);
+            message.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -297,6 +318,18 @@ const AdminOrdersPage = () => {
         setPagination((current) => ({ ...current, page: 1 }));
     };
 
+    const changeRiskFilter = (nextRiskLevel) => {
+        setRiskLevel(nextRiskLevel);
+        setSelectedOrder(null);
+        setPagination((current) => ({ ...current, page: 1 }));
+    };
+
+    const changeSuspiciousFilter = () => {
+        setOnlySuspicious((current) => !current);
+        setSelectedOrder(null);
+        setPagination((current) => ({ ...current, page: 1 }));
+    };
+
     const changePage = (nextPage) => {
         setSelectedOrder(null);
         setPagination((current) => ({ ...current, page: Math.min(Math.max(1, nextPage), totalPages) }));
@@ -393,19 +426,49 @@ const AdminOrdersPage = () => {
                             ))}
                         </div>
 
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                            {RISK_OPTIONS.map((item) => (
+                                <button
+                                    key={item.value || 'all-risk'}
+                                    type="button"
+                                    onClick={() => changeRiskFilter(item.value)}
+                                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                                        riskLevel === item.value
+                                            ? 'border-rose-500 bg-rose-50 text-rose-700'
+                                            : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
+                                    }`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={changeSuspiciousFilter}
+                                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                                    onlySuspicious
+                                        ? 'border-rose-500 bg-rose-600 text-white'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
+                                }`}
+                            >
+                                Chỉ đơn đáng ngờ
+                            </button>
+                        </div>
+
                         {loading ? (
                             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Đang tải đơn hàng...</div>
                         ) : orders.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Chưa có đơn hàng phù hợp.</div>
                         ) : (
                             <div className="admin-orders-scroll overflow-x-auto rounded-2xl border border-slate-200">
-                                <table className="min-w-[860px] divide-y divide-slate-200 text-left text-sm">
+                                <table className="min-w-[1120px] divide-y divide-slate-200 text-left text-sm">
                                     <thead className="bg-slate-50 text-slate-600">
                                         <tr>
                                             <th className="w-[220px] px-4 py-3 font-semibold">Mã đơn</th>
                                             <th className="w-[250px] px-4 py-3 font-semibold">Khách hàng</th>
                                             <th className="w-[150px] px-4 py-3 font-semibold">Tổng tiền</th>
                                             <th className="w-[160px] px-4 py-3 font-semibold">Trạng thái</th>
+                                            <th className="w-[120px] px-4 py-3 font-semibold">Rủi ro</th>
+                                            <th className="w-[100px] px-4 py-3 font-semibold">Điểm</th>
                                             <th className="w-[120px] px-4 py-3 font-semibold">Hành động</th>
                                         </tr>
                                     </thead>
@@ -414,7 +477,7 @@ const AdminOrdersPage = () => {
                                             <tr
                                                 key={order.id || order.orderCode}
                                                 onClick={() => openDetail(order.orderCode || order.id)}
-                                                className="cursor-pointer align-top transition-colors hover:bg-orange-50/40"
+                                                className={`cursor-pointer align-top transition-colors hover:bg-orange-50/40 ${order.riskLevel === 'HIGH' ? 'bg-rose-50/50' : ''}`}
                                             >
                                                 <td className="px-4 py-3">
                                                     <div className="font-semibold text-slate-900">#{order.orderCode}</div>
@@ -431,15 +494,32 @@ const AdminOrdersPage = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <button
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            openDetail(order.orderCode || order.id);
-                                                        }}
-                                                        className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-50"
-                                                    >
-                                                        Chi tiết
-                                                    </button>
+                                                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${RISK_STYLES[order.riskLevel] || RISK_STYLES.LOW}`}>
+                                                        {order.riskLevel || 'LOW'}
+                                                    </span>
+                                                </td>
+                                                <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-800">{Number(order.riskScore || 0)}/100</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                openDetail(order.orderCode || order.id);
+                                                            }}
+                                                            className="rounded-lg border border-orange-200 px-3 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-50"
+                                                        >
+                                                            Chi tiết
+                                                        </button>
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setRiskModalOrder(order);
+                                                            }}
+                                                            className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                                                        >
+                                                            Xem lý do
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -503,6 +583,28 @@ const AdminOrdersPage = () => {
                                     <span className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${STATUS_STYLES[selectedOrder.status] || 'bg-slate-100 text-slate-600'}`}>
                                         {getStatusLabel(selectedOrder.status)}
                                     </span>
+                                </div>
+
+                                <div className={`rounded-2xl border p-4 text-left ${selectedOrder.riskLevel === 'HIGH' ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-white'}`}>
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <div className="text-sm font-semibold text-slate-900">Rủi ro đơn hàng</div>
+                                            <div className="mt-1 text-xs font-medium text-slate-500">Cảnh báo chỉ hỗ trợ kiểm duyệt, không chặn xử lý đơn.</div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${RISK_STYLES[selectedOrder.riskLevel] || RISK_STYLES.LOW}`}>
+                                                {selectedOrder.riskLevel || 'LOW'}
+                                            </span>
+                                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700">
+                                                {Number(selectedOrder.riskScore || 0)}/100
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 rounded-xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                                        {Array.isArray(selectedOrder.riskReasons) && selectedOrder.riskReasons.length
+                                            ? selectedOrder.riskReasons.join('; ')
+                                            : 'Không có cảnh báo'}
+                                    </div>
                                 </div>
 
                                 {selectedOrder.status === 'CANCELLED' ? (
@@ -704,6 +806,36 @@ const AdminOrdersPage = () => {
     onCancel={() => setPendingAction('')}
     onConfirm={pendingActionConfig?.onConfirm}
 />
+{riskModalOrder ? (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 px-4">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <div className="text-lg font-bold text-slate-900">Lý do cảnh báo</div>
+                    <div className="mt-1 text-sm text-slate-500">#{riskModalOrder.orderCode}</div>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setRiskModalOrder(null)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                    Đóng
+                </button>
+            </div>
+            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                {Array.isArray(riskModalOrder.riskReasons) && riskModalOrder.riskReasons.length ? (
+                    <ul className="space-y-2 text-left text-sm font-medium text-slate-700">
+                        {riskModalOrder.riskReasons.map((reason) => (
+                            <li key={reason} className="rounded-lg bg-white px-3 py-2">{reason}</li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="text-center text-sm font-medium text-slate-500">Không có cảnh báo</div>
+                )}
+            </div>
+        </div>
+    </div>
+) : null}
         </div>
     );
 };
