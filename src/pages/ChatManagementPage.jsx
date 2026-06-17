@@ -23,8 +23,8 @@ const ChatManagementPage = () => {
         setLoadingContacts(true);
         try {
             const res = await getChatContactsApi();
-            if (res?.data?.success) {
-                setContacts(res.data.data || []);
+            if (res?.success) {
+                setContacts(res.data || []);
             }
         } catch (err) {
             console.error('Failed to load contacts:', err);
@@ -48,9 +48,9 @@ const ChatManagementPage = () => {
             setLoadingHistory(true);
             try {
                 const res = await getChatHistoryApi(myUserId, activeContact._id);
-                if (res?.data?.success) {
+                if (res?.success) {
                     // Bug 5: Backend returns history sorted descending. We save directly to render reversed.
-                    setMessages(res.data.data || []);
+                    setMessages(res.data || []);
                     
                     // Call API to mark as read
                     await markChatAsReadApi(activeContact._id);
@@ -127,8 +127,8 @@ const ChatManagementPage = () => {
 
         try {
             const res = await sendChatMessageApi(activeContact._id, inputText);
-            if (res?.data?.success && res.data.message) {
-                setMessages((prev) => [res.data.message, ...prev]);
+            if (res?.success && res.message) {
+                setMessages((prev) => [res.message, ...prev]);
                 setInputText('');
 
                 // Push contact to top of list if not already there
