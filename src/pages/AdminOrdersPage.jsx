@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../redux/slices/authSlice';
 import {
@@ -11,6 +11,7 @@ import {
     updateAdminOrderStatusApi,
 } from '../util/api';
 import StatusAlert from '../components/common/StatusAlert';
+import StaffNav from '../components/StaffNav';
 import { useNotifications } from '../hooks/useNotifications';
 import NotificationBell from '../components/common/NotificationBell';
 import ToastNotification from '../components/common/ToastNotification';
@@ -120,6 +121,7 @@ const getLatestStatusEntry = (order, status) => {
 const AdminOrdersPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useSelector((state) => state.auth);
     const notificationsProps = useNotifications();
 
@@ -193,6 +195,17 @@ const AdminOrdersPage = () => {
             setDetailLoading(false);
         }
     };
+ 
+    useEffect(() => {
+        const code = searchParams.get('code');
+        if (code) {
+            openDetail(code);
+            // Clear URL param
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('code');
+            setSearchParams(newParams, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     const refreshSelectedOrder = async (order) => {
         if (!order) return;
@@ -340,24 +353,13 @@ const AdminOrdersPage = () => {
     return (
         <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff7ed_0%,#f8fafc_38%,#f8fafc_100%)] text-slate-800">
             <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                <StaffNav roleId={currentRoleId} />
+
+                <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-orange-500">Order Management</p>
                         <h1 className="mt-2 text-3xl font-black text-slate-900">Quản lý đơn hàng</h1>
                         <p className="mt-2 text-sm text-slate-500">Admin R1 điều phối trạng thái và xử lý yêu cầu hủy đơn.</p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Link to="/management/users" className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-orange-500 hover:text-orange-600">
-                            Quản lý user
-                        </Link>
-                        <Link to="/admin/profile" className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-orange-500 hover:text-orange-600">
-                            Về profile
-                        </Link>
-                        {currentRoleId && <NotificationBell {...notificationsProps} />}
-                        <button onClick={handleLogout} className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-700">
-                            Đăng xuất
-                        </button>
                     </div>
                 </div>
 
@@ -424,7 +426,14 @@ const AdminOrdersPage = () => {
                                                     <div className="font-medium text-slate-700">{getCustomerName(order)}</div>
                                                     <div className="mt-1 text-xs text-slate-500">{getCustomerEmail(order)}</div>
                                                 </td>
-                                                <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-800">{formatVnd(order.totalAmount)}</td>
+                                                 <td className="whitespace-nowrap px-4 py-3">
+                                                      {order.discountAmount > 0 && (
+                                                          <div className="text-xs text-slate-400 line-through">
+                                                              {formatVnd(order.totalAmount + order.discountAmount)}
+                                                          </div>
+                                                      )}
+                                                      <div className="font-semibold text-slate-800">{formatVnd(order.totalAmount)}</div>
+                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[order.status] || 'bg-slate-100 text-slate-600'}`}>
                                                         {getStatusLabel(order.status)}
@@ -548,6 +557,22 @@ const AdminOrdersPage = () => {
                                     <div className="rounded-2xl border border-slate-200 p-4">
                                         <div className="text-sm font-semibold text-slate-900">Thanh toán</div>
                                         <div className="mt-3 divide-y divide-slate-100 text-sm">
+                                            <div className="grid gap-1 py-2 text-left sm:grid-cols-[130px_minmax(0,1fr)]">
+                                                <span className="text-left font-medium text-slate-500">Tạm tính</span>
+                                                <span className="font-semibold text-slate-800">{formatVnd(selectedOrder.subtotal || 0)}</span>
+                                            </div>
+                                            {selectedOrder.couponDiscount > 0 && (
+                                                <div className="grid gap-1 py-2 text-left sm:grid-cols-[130px_minmax(0,1fr)]">
+                                                    <span className="text-left font-medium text-slate-500">Voucher ({selectedOrder.couponCode})</span>
+                                                    <span className="font-semibold text-emerald-600">-{formatVnd(selectedOrder.couponDiscount)}</span>
+                                                </div>
+                                            )}
+                                            {selectedOrder.pointsDiscount > 0 && (
+                                                <div className="grid gap-1 py-2 text-left sm:grid-cols-[130px_minmax(0,1fr)]">
+                                                    <span className="text-left font-medium text-slate-500">Điểm ({selectedOrder.pointsUsed || 0} điểm)</span>
+                                                    <span className="font-semibold text-emerald-600">-{formatVnd(selectedOrder.pointsDiscount)}</span>
+                                                </div>
+                                            )}
                                             <div className="grid gap-1 py-2 text-left sm:grid-cols-[130px_minmax(0,1fr)]">
                                                 <span className="text-left font-medium text-slate-500">Phương thức</span>
                                                 <span className="font-semibold text-slate-800">{selectedOrder.paymentMethod}</span>
@@ -683,11 +708,6 @@ const AdminOrdersPage = () => {
                     </section>
                 </div>
             </div>
-<ToastNotification
-    toastMessage={notificationsProps.toastMessage}
-    setToastMessage={notificationsProps.setToastMessage}
-/>
-
 <DeliveryQrModal
     data={deliveryQr}
     loading={qrLoading}
