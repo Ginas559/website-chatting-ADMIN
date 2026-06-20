@@ -95,3 +95,23 @@ export const markNotificationAsReadApi = (id) => {
 export const createAdminArticleApi = (payload) => {
     return axios.post('admin/articles', payload);
 };
+
+export const getAdminVouchersApi = (params = {}) => {
+    return axios.get('admin/vouchers', { params });
+};
+
+export const getAdminVoucherByIdApi = (id) => {
+    return axios.get(`admin/vouchers/${id}`);
+};
+
+export const createAdminVoucherApi = (payload) => {
+    return axios.post('admin/vouchers', payload);
+};
+
+export const updateAdminVoucherApi = (id, payload) => {
+    return axios.put(`admin/vouchers/${id}`, payload);
+};
+
+export const deleteAdminVoucherApi = (id) => {
+    return axios.delete(`admin/vouchers/${id}`);
+};

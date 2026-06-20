@@ -12,6 +12,7 @@ import ShipperProfilePage from './pages/ShipperProfilePage';
 import ProductManagementPage from './pages/ProductManagementPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import AdminLivePage from './pages/AdminLivePage';
+import VoucherManagementPage from './pages/VoucherManagementPage';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
@@ -147,6 +148,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['R1']}>
               <AdminLivePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/vouchers"
+          element={
+            <ProtectedRoute allowedRoles={['R1']}>
+              <VoucherManagementPage />
             </ProtectedRoute>
           }
         />
