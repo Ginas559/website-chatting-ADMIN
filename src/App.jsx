@@ -12,6 +12,7 @@ import ShipperProfilePage from './pages/ShipperProfilePage';
 import ProductManagementPage from './pages/ProductManagementPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import AdminLivePage from './pages/AdminLivePage';
+import StaffLiveViewerPage from './pages/StaffLiveViewerPage';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
@@ -147,6 +148,22 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['R1']}>
               <AdminLivePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/livestream"
+          element={
+            <ProtectedRoute allowedRoles={['R3']}>
+              <StaffLiveViewerPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/shipper/livestream"
+          element={
+            <ProtectedRoute allowedRoles={['R4']}>
+              <StaffLiveViewerPage />
             </ProtectedRoute>
           }
         />
