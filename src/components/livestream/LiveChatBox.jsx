@@ -3,10 +3,10 @@ import { Button, Empty, Input, Tag, message as antMessage } from 'antd';
 import { liveChatApi } from '../../api/liveChatApi';
 
 const roleClass = {
-    ADMIN: 'text-yellow-500',
-    MANAGER: 'text-purple-500',
-    USER: 'text-slate-100',
-    SHIPPER: 'text-green-500',
+    ADMIN: 'text-amber-700',
+    MANAGER: 'text-purple-700',
+    USER: 'text-slate-800',
+    SHIPPER: 'text-emerald-700',
 };
 
 const roleTagColor = {
@@ -121,31 +121,34 @@ const LiveChatBox = ({ liveId, socket, disabled = false, canModerate = false, ca
     };
 
     return (
-        <div className="flex h-[520px] flex-col rounded-2xl border border-slate-200 bg-slate-950 text-white">
-            <div className="border-b border-slate-800 p-3">
-                <div className="font-bold">Live chat</div>
+        <div className="flex h-[calc(100vh-120px)] min-h-[520px] flex-col rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xl shadow-slate-200/60">
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
+                <div className="font-semibold">Tin nhắn trực tiếp</div>
+                <div className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">LIVE</div>
+            </div>
+            <div className="px-3 pt-3">
                 {pinnedMessage ? (
-                    <div className="mt-2 rounded-xl bg-yellow-500/10 p-2 text-sm text-yellow-200">
-                        <b>Đã ghim:</b> {pinnedMessage.content}
+                    <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        <b className="text-amber-700">Đã ghim:</b> {pinnedMessage.content}
                     </div>
                 ) : null}
             </div>
 
-            <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-3">
+            <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
                 {!messages.length ? (
                     <Empty description={<span className="text-slate-400">Chưa có bình luận</span>} />
                 ) : messages.map((item) => (
-                    <div key={item._id} className="mb-3 rounded-xl bg-white/5 p-2">
-                        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
-                            <span className="font-bold text-white">{item.displayName}</span>
-                            <Tag color={roleTagColor[item.role] || 'default'}>{item.role}</Tag>
-                            <span className="text-slate-500">{formatTime(item.createdAt)}</span>
-                        </div>
-                        <div className={`break-words text-sm ${item.isDeleted ? 'text-slate-500 italic' : roleClass[item.role] || 'text-white'}`}>
-                            {item.content}
+                    <div key={item._id} className="group rounded-lg px-2 py-2 transition hover:bg-slate-50">
+                        <div className="flex flex-wrap items-baseline gap-2 text-sm leading-6">
+                            <span className="font-bold text-slate-900">{item.displayName}</span>
+                            <Tag className="m-0 text-[10px] leading-4" color={roleTagColor[item.role] || 'default'}>{item.role}</Tag>
+                            <span className="text-xs text-slate-400">{formatTime(item.createdAt)}</span>
+                            <span className={`break-words ${item.isDeleted ? 'text-slate-400 italic' : roleClass[item.role] || 'text-slate-800'}`}>
+                                {item.content}
+                            </span>
                         </div>
                         {!item.isDeleted && (canModerate || canPin) ? (
-                            <div className="mt-2 flex gap-2">
+                            <div className="mt-1 hidden gap-2 group-hover:flex">
                                 {canModerate ? <Button size="small" danger onClick={() => deleteMessage(item._id)}>Xóa</Button> : null}
                                 {canPin ? <Button size="small" onClick={() => pinMessage(item._id)}>Ghim</Button> : null}
                             </div>
@@ -154,17 +157,18 @@ const LiveChatBox = ({ liveId, socket, disabled = false, canModerate = false, ca
                 ))}
             </div>
 
-            <div className="border-t border-slate-800 p-3">
+            <div className="shrink-0 border-t border-slate-200 p-3">
                 <div className="flex gap-2">
                     <Input
                         value={content}
                         maxLength={200}
                         disabled={disabled}
-                        placeholder={disabled ? 'Chat đã đóng' : 'Nhập bình luận...'}
+                        placeholder={disabled ? 'Chat đã đóng' : 'Trò chuyện với tư cách người đăng ký...'}
                         onChange={(event) => setContent(event.target.value)}
                         onPressEnter={sendMessage}
+                        className="rounded-full border-slate-200 bg-slate-50 px-4 text-slate-900 placeholder:text-slate-400"
                     />
-                    <Button type="primary" loading={sending} disabled={disabled || !content.trim()} onClick={sendMessage}>Gửi</Button>
+                    <Button className="rounded-full" type="primary" loading={sending} disabled={disabled || !content.trim()} onClick={sendMessage}>Gửi</Button>
                 </div>
             </div>
         </div>

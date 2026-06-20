@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Empty, message, Spin, Tag } from 'antd';
+import { Alert, Button, Empty, message, Spin, Tag } from 'antd';
 import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { livestreamApi } from '../api/livestreamApi';
-import StaffNav from '../components/StaffNav';
 import { createLivestreamSocket } from '../sockets/livestreamSocket';
 import LiveChatBox from '../components/livestream/LiveChatBox';
 
@@ -148,47 +148,53 @@ const StaffLiveViewerPage = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
-            <div className="mx-auto max-w-7xl">
-                <StaffNav roleId={user?.roleId} />
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-slate-900">Livestream SmartZone</h1>
-                    <p className="mt-1 text-sm text-slate-500">Manager/Shipper có thể xem và bình luận, không thể bắt đầu live.</p>
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+                <div className="mx-auto flex max-w-[1800px] items-center gap-4">
+                    <div className="text-xl font-black">SmartZone Live</div>
+                    <Link className="ml-auto rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" to={user?.roleId === 'R4' ? '/shipper/delivery' : '/manager/dashboard'}>
+                        Trang chủ
+                    </Link>
                 </div>
+            </header>
+
+            <main className="mx-auto max-w-[1800px] px-6 py-6">
 
                 {loading ? (
-                    <Card><Spin /></Card>
+                    <div className="grid min-h-[60vh] place-items-center"><Spin /></div>
                 ) : ended ? (
                     <Alert type="info" showIcon message="Livestream đã kết thúc" />
                 ) : !livestream ? (
-                    <Card><Empty description="Hiện chưa có livestream" /></Card>
+                    <div className="grid min-h-[60vh] place-items-center rounded-2xl border border-slate-200 bg-white">
+                        <Empty description="Hiện chưa có livestream" />
+                    </div>
                 ) : (
-                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-                        <Card>
-                            <video ref={videoRef} autoPlay playsInline controls className="aspect-video w-full rounded-xl bg-slate-950" />
-                        </Card>
-                        <Card title="Phiên đang live">
-                            <div className="space-y-4">
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                        <section>
+                            <div className="overflow-hidden rounded-2xl bg-black">
+                                <video ref={videoRef} autoPlay playsInline controls className="aspect-video w-full bg-black object-contain" />
+                            </div>
+                            <div className="mt-4">
+                                <h1 className="text-2xl font-bold leading-tight text-slate-950">{livestream.title}</h1>
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <Tag color="red">LIVE</Tag>
-                                <h2 className="text-xl font-bold text-slate-900">{livestream.title}</h2>
-                                <p className="text-sm leading-6 text-slate-500">{livestream.description || 'Không có mô tả'}</p>
-                                <Button type="primary" block onClick={startWatching} disabled={watching}>
+                                <span className="text-sm text-slate-500">{livestream.description || 'Không có mô tả'}</span>
+                                <Button className="ml-auto rounded-full" type="primary" onClick={startWatching} disabled={watching}>
                                     {watching ? 'Đang xem livestream' : 'Xem livestream'}
                                 </Button>
+                                </div>
                             </div>
-                        </Card>
-                        <div className="lg:col-span-2">
-                            <LiveChatBox
-                                liveId={livestream?._id}
-                                socket={liveSocket}
-                                disabled={!watching || ended}
-                                canModerate={user?.roleId === 'R3'}
-                                canPin={false}
-                            />
-                        </div>
+                        </section>
+                        <LiveChatBox
+                            liveId={livestream?._id}
+                            socket={liveSocket}
+                            disabled={!watching || ended}
+                            canModerate={user?.roleId === 'R3'}
+                            canPin={false}
+                        />
                     </div>
                 )}
-            </div>
+            </main>
         </div>
     );
 };

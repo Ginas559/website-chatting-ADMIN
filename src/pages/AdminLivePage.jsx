@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Card, Empty, Form, Input, List, message, Space, Spin, Tag } from 'antd';
+import { Button, Card, Empty, Form, Input, List, message, Spin, Tag } from 'antd';
+import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { livestreamApi } from '../api/livestreamApi';
-import StaffNav from '../components/StaffNav';
 import { createLivestreamSocket } from '../sockets/livestreamSocket';
 import LiveChatBox from '../components/livestream/LiveChatBox';
 
@@ -214,18 +214,19 @@ const AdminLivePage = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
-            <div className="mx-auto max-w-7xl">
-                <StaffNav roleId={user?.roleId} />
-
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-slate-900">Livestream Management</h1>
-                    <p className="mt-1 text-sm text-slate-500">WebRTC truyền video/audio trực tiếp, Socket.IO chỉ dùng để signaling.</p>
+        <div className="min-h-screen bg-slate-50 text-slate-900">
+            <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+                <div className="mx-auto flex max-w-[1800px] items-center gap-4">
+                    <div className="text-xl font-black">SmartZone Live Studio</div>
+                    <Link className="ml-auto rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" to="/admin/dashboard">Dashboard</Link>
+                    <Link className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100" to="/admin/orders">Đơn hàng</Link>
                 </div>
+            </div>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-                    <Card title="Phiên livestream">
-                        {!livestream ? (
+            <main className="mx-auto max-w-[1800px] px-6 py-6">
+                {!livestream ? (
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                        <Card title="Thiết lập phiên livestream">
                             <Form form={form} layout="vertical" onFinish={startLive}>
                                 <Form.Item name="title" label="Tiêu đề" rules={[{ required: true, min: 2, message: 'Nhập tiêu đề tối thiểu 2 ký tự' }]}>
                                     <Input placeholder="Livestream giới thiệu sản phẩm" />
@@ -237,43 +238,51 @@ const AdminLivePage = () => {
                                     Bắt đầu live
                                 </Button>
                             </Form>
-                        ) : (
-                            <Space direction="vertical" size={12} className="w-full">
-                                <div>
-                                    <Tag color="red">LIVE</Tag>
-                                    <span className="font-semibold">{livestream.title}</span>
-                                </div>
-                                <p className="text-sm text-slate-500">{livestream.description || 'Không có mô tả'}</p>
-                                <Button danger type="primary" onClick={endLive} loading={ending}>
-                                    Kết thúc live
-                                </Button>
-                            </Space>
-                        )}
-                    </Card>
-
-                    <Card title={`Người xem (${viewerCount})`}>
-                        {viewerIds.length ? (
-                            <List
-                                dataSource={viewerIds}
-                                renderItem={(id) => <List.Item><span className="text-sm font-medium">{id}</span></List.Item>}
-                            />
-                        ) : (
+                        </Card>
+                        <Card title="Người xem">
                             <Empty description="Chưa có user xem live" />
-                        )}
-                    </Card>
-                </div>
+                        </Card>
+                    </div>
+                ) : null}
 
-                <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-                    <Card title="Camera preview">
-                        {starting ? <Spin /> : null}
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            className="aspect-video w-full rounded-xl bg-slate-950 object-cover"
-                        />
-                    </Card>
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+                    <section>
+                        <div className="overflow-hidden rounded-2xl bg-black">
+                            {starting ? <Spin /> : null}
+                            <video
+                                ref={localVideoRef}
+                                autoPlay
+                                muted
+                                playsInline
+                                className="aspect-video w-full bg-black object-cover"
+                            />
+                        </div>
+
+                        <div className="mt-4">
+                            <h1 className="text-2xl font-bold leading-tight text-slate-950">{livestream?.title || 'Camera preview'}</h1>
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                                {livestream ? <Tag color="red">LIVE</Tag> : <Tag>OFFLINE</Tag>}
+                                <span className="rounded-full bg-white px-3 py-1 text-sm text-slate-600 shadow-sm">{viewerCount} người xem</span>
+                                <span className="text-sm text-slate-500">{livestream?.description || 'Thiết lập livestream trước khi phát.'}</span>
+                                {livestream ? (
+                                    <Button className="ml-auto rounded-full" danger type="primary" onClick={endLive} loading={ending}>
+                                        Kết thúc live
+                                    </Button>
+                                ) : null}
+                            </div>
+
+                            {viewerIds.length ? (
+                                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                                    <div className="mb-2 text-sm font-semibold text-slate-600">Socket người xem</div>
+                                    <List
+                                        dataSource={viewerIds}
+                                        renderItem={(id) => <List.Item><span className="text-sm text-slate-500">{id}</span></List.Item>}
+                                    />
+                                </div>
+                            ) : null}
+                        </div>
+                    </section>
+
                     <LiveChatBox
                         liveId={livestream?._id}
                         socket={liveSocket}
@@ -282,7 +291,7 @@ const AdminLivePage = () => {
                         canPin
                     />
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
