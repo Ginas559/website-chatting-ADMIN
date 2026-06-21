@@ -13,6 +13,7 @@ import ProductManagementPage from './pages/ProductManagementPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import AdminLivePage from './pages/AdminLivePage';
 import StaffLiveViewerPage from './pages/StaffLiveViewerPage';
+import LiveChatModerationPage from './pages/LiveChatModerationPage';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
@@ -150,6 +151,18 @@ function App() {
               <AdminLivePage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/admin/live-chat/moderation"
+          element={
+            <ProtectedRoute allowedRoles={['R1', 'R3']}>
+              <LiveChatModerationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/live-chat/moderation"
+          element={<Navigate to="/admin/live-chat/moderation" replace />}
         />
         <Route
           path="/manager/livestream"

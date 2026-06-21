@@ -88,17 +88,25 @@ const LiveChatBox = ({ liveId, socket, disabled = false, canModerate = false, ca
             upsertMessage(message);
         };
         const onError = ({ message }) => antMessage.error(message || 'Lỗi live chat');
+        const onWarning = ({ message }) => antMessage.warning(message || 'AI Bot cảnh báo bình luận');
+        const onUserBanned = ({ banCase }) => {
+            antMessage.warning(`${banCase?.displayName || 'Một người dùng'} đã bị AI Bot khóa chat`);
+        };
 
         socket.on('receive-live-chat-message', onReceive);
         socket.on('live-chat-message-deleted', onDeleted);
         socket.on('live-chat-message-pinned', onPinned);
         socket.on('live-chat-error', onError);
+        socket.on('live-chat-warning', onWarning);
+        socket.on('live-chat-user-banned', onUserBanned);
 
         return () => {
             socket.off('receive-live-chat-message', onReceive);
             socket.off('live-chat-message-deleted', onDeleted);
             socket.off('live-chat-message-pinned', onPinned);
             socket.off('live-chat-error', onError);
+            socket.off('live-chat-warning', onWarning);
+            socket.off('live-chat-user-banned', onUserBanned);
         };
     }, [socket, liveId]);
 
