@@ -161,3 +161,20 @@ code {
 .animate-bounce-short {
   animation: bounce-short 2.5s infinite ease-in-out;
 }
+
+/* Custom scrollbar for chat interface */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* light grey scrollbar */
+  border-radius: 9999px;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+

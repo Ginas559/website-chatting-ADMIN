@@ -10,6 +10,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import NotificationBell from '../components/common/NotificationBell';
 import ToastNotification from '../components/common/ToastNotification';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import StaffNav from '../components/StaffNav';
 
 const emptyForm = {
     email: '',
@@ -245,6 +246,7 @@ const AdminManagementPage = () => {
     return (
         <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f7fafc_35%,#f8fafc_100%)] text-slate-800">
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <StaffNav roleId={currentRoleId} />
                 <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-indigo-500">Staff Management</p>
