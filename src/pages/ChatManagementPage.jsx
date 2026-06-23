@@ -5,6 +5,15 @@ import StaffNav from '../components/StaffNav';
 import { initiateSocketConnection, getSocket } from '../services/socket';
 import { getChatContactsApi, getChatHistoryApi, sendChatMessageApi, markChatAsReadApi } from '../api/chatApi';
 
+const displayRole = (role) => {
+    switch (role) {
+        case 'R1': return 'Admin';
+        case 'R3': return 'Manager';
+        case 'R4': return 'Shipper';
+        default: return 'Khách';
+    }
+};
+
 const ChatManagementPage = () => {
     const { user } = useSelector((state) => state.auth);
     const myUserId = user?.id || user?._id;
@@ -258,7 +267,7 @@ const ChatManagementPage = () => {
                                                             {contact.firstName} {contact.lastName}
                                                         </h4>
                                                         <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500 uppercase tracking-wider font-semibold">
-                                                            {contact.roleId || 'USER'}
+                                                            {displayRole(contact.roleId)}
                                                         </span>
                                                     </div>
                                                     <p className="text-xs text-slate-400 truncate mt-0.5">{contact.email}</p>
