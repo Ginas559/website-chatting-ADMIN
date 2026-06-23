@@ -17,6 +17,10 @@ const ChatManagementPage = () => {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const messagesEndRef = useRef(null);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
+    const messagesContainerRef = useRef(null);
+    const prevMessagesRef = useRef([]);
 
     // 1. Fetch initial chat contacts
     const fetchContacts = async () => {
@@ -46,11 +50,12 @@ const ChatManagementPage = () => {
 
         const fetchHistory = async () => {
             setLoadingHistory(true);
+            setHasMoreMessages(true);
             try {
-                const res = await getChatHistoryApi(myUserId, activeContact._id);
+                const res = await getChatHistoryApi(myUserId, activeContact._id, { limit: 20 });
                 if (res?.success) {
-                    // Bug 5: Backend returns history sorted descending. We save directly to render reversed.
                     setMessages(res.data || []);
+                    setHasMoreMessages(res.hasMore ?? (res.data?.length === 20));
                     
                     // Call API to mark as read
                     await markChatAsReadApi(activeContact._id);
@@ -59,6 +64,13 @@ const ChatManagementPage = () => {
                     setContacts(prev => prev.map(c => 
                         c._id === activeContact._id ? { ...c, unreadCount: 0 } : c
                     ));
+
+                    // Scroll to bottom initially
+                    setTimeout(() => {
+                        if (messagesContainerRef.current) {
+                            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+                        }
+                    }, 50);
                 }
             } catch (err) {
                 console.error('Failed to load chat history:', err);
@@ -113,9 +125,57 @@ const ChatManagementPage = () => {
         };
     }, [myUserId, activeContact, roleId]);
 
-    // Scroll to bottom helper
+    const handleScroll = async () => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        if (container.scrollTop === 0 && hasMoreMessages && !loadingMoreHistory && !loadingHistory && messages.length > 0) {
+            setLoadingMoreHistory(true);
+            const oldestMessage = messages[0];
+            const beforeTimestamp = oldestMessage.createdAt;
+            const scrollHeightBefore = container.scrollHeight;
+
+            try {
+                const res = await getChatHistoryApi(myUserId, activeContact._id, {
+                    before: beforeTimestamp,
+                    limit: 20
+                });
+                if (res?.success && res.data?.length > 0) {
+                    const newMessages = res.data;
+                    setMessages(prev => [...newMessages, ...prev]);
+                    setHasMoreMessages(res.hasMore ?? (newMessages.length === 20));
+
+                    // Restore scroll position so it doesn't jump
+                    setTimeout(() => {
+                        container.scrollTop = container.scrollHeight - scrollHeightBefore;
+                    }, 0);
+                } else {
+                    setHasMoreMessages(false);
+                }
+            } catch (err) {
+                console.error('Failed to load older messages:', err);
+            } finally {
+                setLoadingMoreHistory(false);
+            }
+        }
+    };
+
+    // Scroll to bottom helper - only trigger for initial loads and appended new messages
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const prev = prevMessagesRef.current;
+        const current = messages;
+        
+        const hasNewAppended = current.length > 0 && (
+            prev.length === 0 || 
+            current[current.length - 1]?._id !== prev[prev.length - 1]?._id ||
+            current[current.length - 1]?.createdAt !== prev[prev.length - 1]?.createdAt
+        );
+
+        if (hasNewAppended) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        prevMessagesRef.current = messages;
     }, [messages]);
 
     const handleSendMessage = async (e) => {
@@ -144,21 +204,21 @@ const ChatManagementPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6 flex flex-col">
-            <div className="mx-auto w-full max-w-7xl flex flex-col flex-1">
+        <div className="h-screen bg-slate-50 p-6 flex flex-col overflow-hidden">
+            <div className="mx-auto w-full max-w-7xl flex flex-col flex-1 overflow-hidden min-h-0">
                 <StaffNav roleId={roleId} />
 
                 {/* Chat Panel Box */}
-                <div className="flex-1 min-h-[550px] grid grid-cols-1 md:grid-cols-12 rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-12 rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden min-h-0">
                     
                     {/* Left Panel: Contact List */}
-                    <div className="md:col-span-4 border-r border-slate-100 flex flex-col bg-white">
+                    <div className="md:col-span-4 border-r border-slate-100 flex flex-col bg-white h-full min-h-0">
                         <div className="p-4 border-b border-slate-50 bg-slate-50/50">
                             <h2 className="text-lg font-black text-slate-800 text-left">Hỗ trợ khách hàng</h2>
                             <p className="text-xs text-slate-400 text-left mt-0.5">Danh sách liên hệ gần đây</p>
                         </div>
                         
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto chat-scrollbar">
                             <Spin spinning={loadingContacts}>
                                 {contacts.length === 0 ? (
                                     <div className="p-8 text-center text-slate-400 text-sm">
@@ -212,7 +272,7 @@ const ChatManagementPage = () => {
                     </div>
 
                     {/* Right Panel: Active Chat */}
-                    <div className="md:col-span-8 flex flex-col bg-slate-50/50">
+                    <div className="md:col-span-8 flex flex-col bg-slate-50/50 h-full min-h-0">
                         {activeContact ? (
                             <div className="flex flex-col flex-1 h-full overflow-hidden">
                                 {/* Chat Header */}
@@ -233,9 +293,19 @@ const ChatManagementPage = () => {
                                 </div>
 
                                 {/* Messages View */}
-                                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-slate-50">
-                                    <Spin spinning={loadingHistory}>
-                                        {messages.length === 0 ? (
+                                <div 
+                                    ref={messagesContainerRef}
+                                    onScroll={handleScroll}
+                                    className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-slate-50 chat-scrollbar"
+                                >
+                                    {loadingMoreHistory && (
+                                        <div className="text-center py-2 shrink-0">
+                                            <Spin size="small" />
+                                        </div>
+                                    )}
+
+                                    <Spin spinning={loadingHistory && messages.length === 0}>
+                                        {messages.length === 0 && !loadingHistory ? (
                                             <div className="my-auto text-center text-slate-400 p-8">
                                                 Chưa có tin nhắn nào. Bắt đầu cuộc trò chuyện hỗ trợ.
                                             </div>
@@ -244,9 +314,9 @@ const ChatManagementPage = () => {
                                                 const isMe = msg.senderId === myUserId;
                                                 return (
                                                     <div key={msg._id || Math.random()} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                                                        <div className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm shadow-sm text-left ${
                                                             isMe 
-                                                                ? 'bg-slate-900 text-white rounded-br-none' 
+                                                                ? 'bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-br-none shadow-md shadow-orange-500/10' 
                                                                 : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                                         }`}>
                                                             {/* Fix Bug 7: Render safely as text node to prevent Stored XSS */}

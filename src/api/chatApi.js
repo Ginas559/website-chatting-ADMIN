@@ -4,8 +4,8 @@ export const getChatContactsApi = () => {
     return axios.get('chat/contacts');
 };
 
-export const getChatHistoryApi = (senderId, receiverId) => {
-    return axios.get(`chat/history/${senderId}/${receiverId}`);
+export const getChatHistoryApi = (senderId, receiverId, params = {}) => {
+    return axios.get(`chat/history/${senderId}/${receiverId}`, { params });
 };
 
 export const sendChatMessageApi = (receiverId, content) => {
