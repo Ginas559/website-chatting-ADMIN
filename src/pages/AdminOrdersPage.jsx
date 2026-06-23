@@ -17,6 +17,7 @@ import NotificationBell from '../components/common/NotificationBell';
 import ToastNotification from '../components/common/ToastNotification';
 import DeliveryQrModal from '../components/admin/DeliveryQrModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import StaffNav from '../components/StaffNav';
 
 const getRoleIdFromToken = () => {
     const token = localStorage.getItem('accessToken');
@@ -393,6 +394,7 @@ const AdminOrdersPage = () => {
     return (
         <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff7ed_0%,#f8fafc_38%,#f8fafc_100%)] text-slate-800">
             <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <StaffNav roleId={currentRoleId} />
                 <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-orange-500">Order Management</p>
