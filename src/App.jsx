@@ -12,6 +12,8 @@ import ShipperProfilePage from './pages/ShipperProfilePage';
 import ProductManagementPage from './pages/ProductManagementPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import AdminLivePage from './pages/AdminLivePage';
+import StaffLiveViewerPage from './pages/StaffLiveViewerPage';
+import LiveChatModerationPage from './pages/LiveChatModerationPage';
 import ChatManagementPage from './pages/ChatManagementPage';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
@@ -74,6 +76,7 @@ function App() {
         <Route path="/" element={<StaffHomeRedirect />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
         <Route
           path="/admin/dashboard"
           element={
@@ -82,6 +85,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/manager/dashboard"
           element={
@@ -99,6 +103,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/users"
           element={
@@ -107,10 +112,9 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/management/users"
-          element={<Navigate to="/admin/users" replace />}
-        />
+
+        <Route path="/management/users" element={<Navigate to="/admin/users" replace />} />
+
         <Route
           path="/admin/orders"
           element={
@@ -119,10 +123,9 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/manager/orders"
-          element={<Navigate to="/admin/orders" replace />}
-        />
+
+        <Route path="/manager/orders" element={<Navigate to="/admin/orders" replace />} />
+
         <Route
           path="/admin/products"
           element={
@@ -131,10 +134,9 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/manager/products"
-          element={<Navigate to="/admin/products" replace />}
-        />
+
+        <Route path="/manager/products" element={<Navigate to="/admin/products" replace />} />
+
         <Route
           path="/admin/settings"
           element={
@@ -143,6 +145,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/livestream"
           element={
@@ -151,6 +154,39 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/admin/live-chat/moderation"
+          element={
+            <ProtectedRoute allowedRoles={['R1', 'R3']}>
+              <LiveChatModerationPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/live-chat/moderation"
+          element={<Navigate to="/admin/live-chat/moderation" replace />}
+        />
+
+        <Route
+          path="/manager/livestream"
+          element={
+            <ProtectedRoute allowedRoles={['R3']}>
+              <StaffLiveViewerPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/shipper/livestream"
+          element={
+            <ProtectedRoute allowedRoles={['R4']}>
+              <StaffLiveViewerPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/admin/chat"
           element={
@@ -168,6 +204,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/manager/users"
           element={
@@ -176,6 +213,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/shipper/profile"
           element={
@@ -184,6 +222,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/shipper/delivery"
           element={
@@ -194,10 +233,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/delivery/verify"
-          element={<Navigate to="/shipper/delivery" replace />}
-        />
+
+        <Route path="/delivery/verify" element={<Navigate to="/shipper/delivery" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
