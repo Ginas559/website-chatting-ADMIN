@@ -86,7 +86,7 @@ const ChatManagementPage = () => {
             
             // Check if message is from/to the active contact
             if (activeContact && (msg.senderId === activeContact._id || msg.receiverId === activeContact._id)) {
-                setMessages((prev) => [msg, ...prev]); // Prepend matching descending order
+                setMessages((prev) => [...prev, msg]); // Append to end because backend list is now sorted ascending
                 // Mark received message as read
                 if (msg.senderId === activeContact._id) {
                     markChatAsReadApi(activeContact._id).catch(() => {});
@@ -128,7 +128,7 @@ const ChatManagementPage = () => {
         try {
             const res = await sendChatMessageApi(activeContact._id, inputText);
             if (res?.success && res.message) {
-                setMessages((prev) => [res.message, ...prev]);
+                setMessages((prev) => [...prev, res.message]);
                 setInputText('');
 
                 // Push contact to top of list if not already there
@@ -233,9 +233,7 @@ const ChatManagementPage = () => {
                                 </div>
 
                                 {/* Messages View */}
-                                <div className="flex-1 overflow-y-auto p-6 flex flex-col-reverse bg-slate-50">
-                                    <div ref={messagesEndRef} />
-                                    
+                                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-slate-50">
                                     <Spin spinning={loadingHistory}>
                                         {messages.length === 0 ? (
                                             <div className="my-auto text-center text-slate-400 p-8">
@@ -245,14 +243,14 @@ const ChatManagementPage = () => {
                                             messages.map((msg) => {
                                                 const isMe = msg.senderId === myUserId;
                                                 return (
-                                                    <div key={msg._id || Math.random()} className={`mb-4 flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                                    <div key={msg._id || Math.random()} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
                                                             isMe 
                                                                 ? 'bg-slate-900 text-white rounded-br-none' 
                                                                 : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none'
                                                         }`}>
-                                                            {/* Bug 7: Stored XSS vulnerability due to dangerouslySetInnerHTML */}
-                                                            <div dangerouslySetInnerHTML={{ __html: msg.content }} />
+                                                            {/* Fix Bug 7: Render safely as text node to prevent Stored XSS */}
+                                                            <div>{msg.content}</div>
                                                             
                                                             <span className={`block text-[10px] mt-1 text-right ${isMe ? 'text-white/60' : 'text-slate-400'}`}>
                                                                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -263,6 +261,7 @@ const ChatManagementPage = () => {
                                             })
                                         )}
                                     </Spin>
+                                    <div ref={messagesEndRef} />
                                 </div>
 
                                 {/* Send Input Form */}
