@@ -178,3 +178,73 @@ code {
   background: #94a3b8;
 }
 
+/* Disable tap-highlight-color and text caret for ALL elements in the system to prevent blinking/flashing cursors on static text */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  caret-color: transparent !important;
+}
+
+/* Restore text caret only for editable inputs and textareas */
+input,
+textarea,
+[contenteditable="true"] {
+  caret-color: auto !important;
+}
+
+/* Eliminate focus outline/shadow flashing on click for all elements except keyboard-focused ones */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Prevent accidental text selection and caret flashing on double-click of interactive controls and wrappers */
+button,
+a,
+label,
+select,
+option,
+input[type="checkbox"],
+input[type="radio"],
+svg,
+img,
+.badge,
+.logo,
+.nav-link,
+.slick-slide,
+.slick-track,
+.group {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Prevent caret/selection flash on headers, navigation containers, menus, and all static text elements */
+header,
+header *,
+nav,
+nav *,
+.staff-nav,
+.staff-nav *,
+.nav-link,
+.nav-link * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  caret-color: transparent !important;
+}
+
+/* Ensure inputs/textareas inside header/nav are fully focusable and editable */
+header input,
+header textarea,
+nav input,
+nav textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  caret-color: auto !important;
+}
+
+

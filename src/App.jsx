@@ -15,6 +15,7 @@ import AdminLivePage from './pages/AdminLivePage';
 import StaffLiveViewerPage from './pages/StaffLiveViewerPage';
 import LiveChatModerationPage from './pages/LiveChatModerationPage';
 import ChatManagementPage from './pages/ChatManagementPage';
+import ScrollToTop from './components/common/ScrollToTop';
 
 const DeliveryVerificationPage = lazy(() => import('./pages/DeliveryVerificationPage'));
 
@@ -72,6 +73,7 @@ const StaffHomeRedirect = () => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<StaffHomeRedirect />} />
         <Route path="/login" element={<LoginPage />} />
