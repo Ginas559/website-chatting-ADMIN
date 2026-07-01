@@ -233,7 +233,7 @@ const AdminOrdersPage = () => {
     };
 
     const handleStatusChange = async (overrideStatus = '') => {
-        const requestedStatus = overrideStatus || (selectedOrder ? NEXT_STATUS[selectedOrder.status] : '');
+        const requestedStatus = (typeof overrideStatus === 'string' && overrideStatus ? overrideStatus : '') || (selectedOrder ? NEXT_STATUS[selectedOrder.status] : '');
         if (!selectedOrder || !requestedStatus) return;
 
         setMutating(true);
@@ -363,7 +363,7 @@ const AdminOrdersPage = () => {
                 : `Đơn sẽ chuyển sang trạng thái “${getStatusLabel(nextStatus)}”.`,
             confirmLabel: nextStatus === 'DELIVERED' ? 'Xác nhận đã giao' : 'Cập nhật trạng thái',
             tone: nextStatus === 'DELIVERED' ? 'warning' : 'primary',
-            onConfirm: handleStatusChange,
+            onConfirm: () => handleStatusChange(),
         }
         : pendingAction === 'DELIVERY_FAILED'
             ? {
